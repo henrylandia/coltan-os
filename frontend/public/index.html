@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<script>if(!localStorage.getItem("coltan_token")){window.location.replace("/login.html")}</script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coltan OS — Dashboard</title>
+  <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link href="vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/main.css" rel="stylesheet">
+  <script src="vendor/chartjs/chart.umd.min.js"></script>
+  <style>
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; cursor: pointer; transition: border-color 0.2s, transform 0.1s;
+    }
+    .stat-card:hover { border-color: rgba(79,142,247,0.5); transform: translateY(-1px); }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .stat-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+    .progress-bar-custom { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; margin-top: 10px; }
+    .progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+
+    .panel {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; position: relative; transition: border-color 0.15s, opacity 0.15s;
+    }
+    .panel.dragging { opacity: 0.4; border: 2px dashed var(--accent); }
+    .panel.drag-over { border: 2px solid var(--accent); background: rgba(79,142,247,0.05); }
+
+    .panel-header {
+      font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 6px;
+      cursor: grab; user-select: none;
+    }
+    .panel-header:active { cursor: grabbing; }
+    .panel-header.clickable { cursor: pointer; }
+    .panel-header.clickable:hover { color: var(--accent); }
+    .drag-icon { opacity: 0.3; margin-left: auto; font-size: 0.8rem; }
+    .panel-header:hover .drag-icon { opacity: 0.7; }
+
+    .iface-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 6px;
+      background: var(--bg-dark); cursor: pointer; transition: background 0.15s;
+    }
+    .iface-row:hover { background: rgba(79,142,247,0.08); }
+    .iface-name { font-weight: 700; color: var(--accent); font-size: 0.85rem; }
+    .iface-role { font-size: 0.7rem; color: var(--text-muted); margin-left: 6px; }
+    .iface-speeds { display: flex; gap: 12px; font-size: 0.78rem; font-family: monospace; }
+    .speed-rx { color: #22c55e; }
+    .speed-tx { color: #f59e0b; }
+
+    .service-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: 8px; margin-bottom: 4px;
+      background: var(--bg-dark); transition: background 0.15s;
+    }
+    .service-item.clickable { cursor: pointer; }
+    .service-item.clickable:hover { background: rgba(79,142,247,0.08); }
+    .service-name { font-size: 0.82rem; color: var(--text-primary); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+    .dot-red { background: #ef4444; }
+
+    .vpn-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 6px;
+      background: var(--bg-dark); cursor: pointer; transition: background 0.15s;
+    }
+    .vpn-item:hover { background: rgba(79,142,247,0.08); }
+    .badge-on { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; }
+    .badge-off { background: rgba(100,116,139,0.15); color: #64748b; border: 1px solid rgba(100,116,139,0.3); padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; }
+
+    .sec-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 6px;
+      background: var(--bg-dark); cursor: pointer; transition: background 0.15s;
+    }
+    .sec-item:hover { background: rgba(239,68,68,0.08); }
+    .sec-count { font-size: 1.2rem; font-weight: 700; color: #f87171; font-family: monospace; }
+    .sec-label { font-size: 0.78rem; color: var(--text-muted); }
+
+    .user-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-radius: 8px; margin-bottom: 4px;
+      background: var(--bg-dark); font-size: 0.8rem;
+    }
+    .user-name { color: var(--accent); font-weight: 600; }
+    .user-ip { color: var(--text-muted); font-family: monospace; font-size: 0.75rem; }
+
+    .info-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-dark); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 16px; font-size: 0.82rem;
+    }
+    .info-pill-label { color: var(--text-muted); font-size: 0.72rem; }
+    .info-pill-value { color: var(--text-primary); font-weight: 600; font-family: monospace; }
+
+    .btn-speedtest {
+      background: rgba(79,142,247,0.15); border: 1px solid rgba(79,142,247,0.3);
+      color: var(--accent); padding: 10px 20px; border-radius: 10px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .btn-speedtest:hover { background: rgba(79,142,247,0.25); }
+
+    .float-modal {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;
+    }
+    .float-modal.open { display: flex; }
+    .float-modal-inner {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; min-width: 480px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
+    }
+    .float-modal-title {
+      font-size: 1rem; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .float-modal-close { cursor: pointer; color: var(--text-muted); font-size: 1.2rem; }
+    .float-modal-close:hover { color: var(--text-primary); }
+
+    .geo-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem;
+    }
+    .geo-row:last-child { border-bottom: none; }
+    .geo-count { color: #f87171; font-weight: 700; font-family: monospace; }
+
+    .btn-save-layout {
+      background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+      color: #22c55e; padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-reset-layout {
+      background: rgba(100,116,139,0.15); border: 1px solid rgba(100,116,139,0.3);
+      color: #64748b; padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; cursor: pointer;
+    }
+
+    #panels-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    #panel-speedtest { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <div class="main-content">
+    <div class="p-4">
+
+      <!-- Layout controls -->
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+        <button class="btn-reset-layout" onclick="resetLayout()"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</button>
+        <button class="btn-save-layout" onclick="saveLayout()"><i class="bi bi-floppy me-1"></i>Guardar Layout</button>
+      </div>
+
+      <!-- Stats row -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="stat-card" onclick="openModal('cpu-modal')">
+            <div class="stat-label"><i class="bi bi-cpu me-1"></i>CPU</div>
+            <div class="stat-value" id="cpu-val">--%</div>
+            <div class="stat-sub" id="cpu-sub">Click para ver gráfico</div>
+            <div class="progress-bar-custom"><div class="progress-fill" id="cpu-bar" style="width:0%;background:var(--accent)"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card" onclick="openModal('mem-modal')">
+            <div class="stat-label"><i class="bi bi-memory me-1"></i>Memory</div>
+            <div class="stat-value" id="mem-val">--</div>
+            <div class="stat-sub" id="mem-sub">Click para ver gráfico</div>
+            <div class="progress-bar-custom"><div class="progress-fill" id="mem-bar" style="width:0%;background:#a855f7"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card" onclick="openModal('disk-modal')">
+            <div class="stat-label"><i class="bi bi-hdd me-1"></i>Disk</div>
+            <div class="stat-value" id="disk-val">--</div>
+            <div class="stat-sub" id="disk-sub">—</div>
+            <div class="progress-bar-custom"><div class="progress-fill" id="disk-bar" style="width:0%;background:#f59e0b"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card">
+            <div class="stat-label"><i class="bi bi-clock me-1"></i>Uptime</div>
+            <div class="stat-value" style="font-size:1.2rem" id="uptime-val">--</div>
+            <div class="stat-sub" id="hostname-val">coltanos</div>
+            <div style="margin-top:6px" id="license-badge"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Draggable panels -->
+      <div id="panels-grid">
+
+        <div class="panel" id="panel-interfaces" draggable="true" ondragstart="dragStart(event,'panel-interfaces')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header">
+            <i class="bi bi-ethernet"></i>Interfaces Activas
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="ifaces-container"><div style="color:var(--text-muted);font-size:0.82rem">Cargando...</div></div>
+        </div>
+
+        <div class="panel" id="panel-services" draggable="true" ondragstart="dragStart(event,'panel-services')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header">
+            <i class="bi bi-activity"></i>Servicios
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="services-container"><div style="color:var(--text-muted);font-size:0.82rem">Cargando...</div></div>
+        </div>
+
+        <div class="panel" id="panel-vpn" draggable="true" ondragstart="dragStart(event,'panel-vpn')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header">
+            <i class="bi bi-shield-lock"></i>VPN
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="vpn-container"><div style="color:var(--text-muted);font-size:0.82rem">Cargando...</div></div>
+        </div>
+
+        <div class="panel" id="panel-suricata" draggable="true" ondragstart="dragStart(event,'panel-suricata')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header clickable" onclick="openModal('suricata-modal');loadSuricataModal()">
+            <i class="bi bi-shield-exclamation"></i>Suricata IDS/IPS <i class="bi bi-box-arrow-up-right" style="font-size:0.65rem"></i>
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="suricata-summary"></div>
+        </div>
+
+        <div class="panel" id="panel-dns" draggable="true" ondragstart="dragStart(event,'panel-dns')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header clickable" onclick="openModal('dns-modal');loadDNSModal()">
+            <i class="bi bi-ban"></i>DNS Blocker <i class="bi bi-box-arrow-up-right" style="font-size:0.65rem"></i>
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="dns-summary"></div>
+        </div>
+
+        <div class="panel" id="panel-sites" draggable="true" ondragstart="dragStart(event,'panel-sites')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header">
+            <i class="bi bi-slash-circle"></i>Site Blocking
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div id="sites-summary"></div>
+        </div>
+        <div class="panel" id="panel-speedtest" draggable="true" ondragstart="dragStart(event,'panel-speedtest')" ondragover="dragOver(event)" ondrop="drop(event)" ondragend="dragEnd(event)">
+          <div class="panel-header">
+            <i class="bi bi-speedometer2"></i>Red & Velocidad
+            <i class="bi bi-grip-vertical drag-icon"></i>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div class="info-pill flex-grow-1">
+              <div>
+                <div class="info-pill-label">IP Pública</div>
+                <div class="info-pill-value" id="public-ip">—</div>
+              </div>
+            </div>
+            <button class="btn-speedtest" onclick="runSpeedtest()"><i class="bi bi-speedometer2 me-1"></i>Test de Velocidad</button>
+            <div id="speedtest-result" style="display:none">
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:2px">Resultado</div>
+              <div id="speedtest-data" style="font-size:0.85rem"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CPU Modal -->
+  <div class="float-modal" id="cpu-modal" onclick="closeModalOutside(event,'cpu-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span><i class="bi bi-cpu me-2"></i>CPU Usage — Últimos 60s</span>
+        <span class="float-modal-close" onclick="closeModal('cpu-modal')">✕</span>
+      </div>
+      <canvas id="cpuChart" height="140"></canvas>
+      <div id="hw-cpu-info" style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem"></div>
+    </div>
+  </div>
+
+  <!-- Disk Modal -->
+  <div class="float-modal" id="disk-modal" onclick="closeModalOutside(event,'disk-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span><i class="bi bi-hdd me-2"></i>Disk Usage</span>
+        <span class="float-modal-close" onclick="closeModal('disk-modal')">✕</span>
+      </div>
+      <canvas id="diskChart" height="200"></canvas>
+      <div id="hw-disk-info" style="margin-top:16px;font-size:0.82rem"></div>
+    </div>
+  </div>
+
+  <!-- Memory Modal -->
+  <div class="float-modal" id="mem-modal" onclick="closeModalOutside(event,'mem-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span><i class="bi bi-memory me-2"></i>Memory Usage — Últimos 60s</span>
+        <span class="float-modal-close" onclick="closeModal('mem-modal')">✕</span>
+      </div>
+      <canvas id="memChart" height="140"></canvas>
+      <div id="hw-mem-info" style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem"></div>
+    </div>
+  </div>
+
+  <!-- Interface Modal -->
+  <div class="float-modal" id="iface-modal" onclick="closeModalOutside(event,'iface-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span id="iface-modal-title"><i class="bi bi-ethernet me-2"></i>Interface</span>
+        <span class="float-modal-close" onclick="closeModal('iface-modal')">✕</span>
+      </div>
+      <canvas id="ifaceChart" height="140"></canvas>
+      <div id="iface-modal-details" style="margin-top:16px;font-size:0.82rem"></div>
+    </div>
+  </div>
+
+  <!-- VPN Modal -->
+  <div class="float-modal" id="vpn-modal" onclick="closeModalOutside(event,'vpn-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span id="vpn-modal-title"><i class="bi bi-shield-lock me-2"></i>VPN Details</span>
+        <span class="float-modal-close" onclick="closeModal('vpn-modal')">✕</span>
+      </div>
+      <div id="vpn-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- Suricata Modal -->
+  <div class="float-modal" id="suricata-modal" onclick="closeModalOutside(event,'suricata-modal')">
+    <div class="float-modal-inner" style="min-width:540px">
+      <div class="float-modal-title">
+        <span><i class="bi bi-shield-exclamation me-2"></i>Suricata — Detalle de Ataques</span>
+        <span class="float-modal-close" onclick="closeModal('suricata-modal')">✕</span>
+      </div>
+      <div id="suricata-modal-content"></div>
+    </div>
+  </div>
+
+  <!-- DNS Modal -->
+  <div class="float-modal" id="dns-modal" onclick="closeModalOutside(event,'dns-modal')">
+    <div class="float-modal-inner">
+      <div class="float-modal-title">
+        <span><i class="bi bi-ban me-2"></i>DNS Blocker — Detalles</span>
+        <span class="float-modal-close" onclick="closeModal('dns-modal')">✕</span>
+      </div>
+      <div id="dns-modal-content"></div>
+    </div>
+  </div>
+
+  <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script>
+    const token = localStorage.getItem('coltan_token')
+    if (!token) window.location.href = '/login.html'
+    loadSidebar('dashboard')
+    loadTopbar('<i class="bi bi-speedometer2 me-2"></i>Dashboard')
+    startClock()
+
+    const h = { headers: { 'Authorization': 'Bearer ' + token } }
+
+    // ── Charts ───────────────────────────────────────────────────────────────
+    const baseChartOpts = {
+      responsive: true, animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 }, callback: v => v + '%' } }
+      },
+      elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 2 } }
+    }
+
+    const labels = Array(60).fill('')
+    const cpuData = Array(60).fill(0)
+    const memData = Array(60).fill(0)
+
+    const cpuChart = new Chart(document.getElementById('cpuChart'), {
+      type: 'line',
+      data: { labels, datasets: [{ data: cpuData, borderColor: '#4f8ef7', backgroundColor: 'rgba(79,142,247,0.1)', fill: true }] },
+      options: baseChartOpts
+    })
+    const memChart = new Chart(document.getElementById('memChart'), {
+      type: 'line',
+      data: { labels, datasets: [{ data: memData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', fill: true }] },
+      options: baseChartOpts
+    })
+
+    let ifaceChart = null
+    let diskChart = null
+
+    // ── Modals ───────────────────────────────────────────────────────────────
+    function openModal(id) { document.getElementById(id).classList.add('open') }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open')
+      if (id === 'iface-modal') window._ifaceModalCurrentIface = null
+    }
+    function closeModalOutside(e, id) { if (e.target === document.getElementById(id)) closeModal(id) }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function formatBytes(b) {
+      if (b > 1073741824) return (b/1073741824).toFixed(1)+' GB'
+      if (b > 1048576) return (b/1048576).toFixed(1)+' MB'
+      if (b > 1024) return (b/1024).toFixed(1)+' KB'
+      return (b||0)+' B'
+    }
+
+    // ── Service routes ───────────────────────────────────────────────────────
+    const SERVICE_ROUTES = {
+      'PF Firewall': '/pages/firewall.html',
+      'Suricata': '/pages/security.html',
+      'Unbound DNS': '/pages/security.html',
+      'Kea DHCP': '/pages/networking.html',
+      'WireGuard': '/pages/wireguard.html',
+      'OpenVPN': '/pages/openvpn.html'
+    }
+
+    // ── Public IP ────────────────────────────────────────────────────────────
+    async function loadPublicIP() {
+      try {
+        const res = await fetch('/api/metrics/public-ip', { headers: h.headers })
+        const data = await res.json()
+        document.getElementById('public-ip').textContent = data.ip || '—'
+      } catch(e) { document.getElementById('public-ip').textContent = '—' }
+    }
+
+    // ── Speedtest ────────────────────────────────────────────────────────────
+    async function runSpeedtest() {
+      const el = document.getElementById('speedtest-result')
+      const dataEl = document.getElementById('speedtest-data')
+      el.style.display = 'block'
+      dataEl.innerHTML = '<span style="color:var(--text-muted)">Midiendo bajada...</span>'
+      try {
+        // Download test - 50MB para más precisión
+        const t1 = Date.now()
+        const res = await fetch('https://speed.cloudflare.com/__down?bytes=50000000', { cache: 'no-cache' })
+        const blob = await res.blob()
+        const dlMbps = ((blob.size * 8) / ((Date.now() - t1) / 1000) / 1000000).toFixed(1)
+        dataEl.innerHTML = `<span style="color:#22c55e;font-weight:700">↓ ${dlMbps} Mbps</span> <span style="color:var(--text-muted)">Midiendo subida...</span>`
+
+        // Upload test - subir 20MB
+        const uploadData = new Uint8Array(20000000)
+        const t2 = Date.now()
+        await fetch('https://speed.cloudflare.com/__up', {
+          method: 'POST', cache: 'no-cache',
+          body: uploadData
+        }).catch(() => {})
+        const ulMbps = ((uploadData.length * 8) / ((Date.now() - t2) / 1000) / 1000000).toFixed(1)
+
+        dataEl.innerHTML = `
+          <span style="color:#22c55e;font-weight:700">↓ ${dlMbps} Mbps</span>
+          <span style="color:var(--text-muted);margin:0 6px">|</span>
+          <span style="color:#f59e0b;font-weight:700">↑ ${ulMbps} Mbps</span>`
+      } catch(e) { dataEl.innerHTML = '<span style="color:#f87171">Error midiendo velocidad</span>' }
+    }
+
+    // ── Interface modal ──────────────────────────────────────────────────────
+    function openIfaceModal(name, ip, status, rxRate, txRate) {
+      document.getElementById('iface-modal-title').innerHTML = `<i class="bi bi-ethernet me-2"></i>${name}`
+      document.getElementById('iface-modal-details').innerHTML = `
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div><div style="color:var(--text-muted);font-size:0.72rem">IP</div><div style="font-family:monospace;color:var(--text-primary)">${ip||'—'}</div></div>
+          <div><div style="color:var(--text-muted);font-size:0.72rem">Estado</div><div style="color:${status==='active'?'#22c55e':'#ef4444'}">${status}</div></div>
+          <div><div style="color:var(--text-muted);font-size:0.72rem">↓ RX</div><div style="color:#22c55e;font-family:monospace">${formatBytes(rxRate)}/s</div></div>
+          <div><div style="color:var(--text-muted);font-size:0.72rem">↑ TX</div><div style="color:#f59e0b;font-family:monospace">${formatBytes(txRate)}/s</div></div>
+        </div>`
+      if (ifaceChart) ifaceChart.destroy()
+      // Historial en memoria por interfaz — estilo mountain chart pfSense
+      if (!window._ifaceHistory) window._ifaceHistory = {}
+      if (!window._ifaceHistory[name]) window._ifaceHistory[name] = { rx: Array(30).fill(0), tx: Array(30).fill(0) }
+      const hist = window._ifaceHistory[name]
+      hist.rx.push(rxRate); hist.rx.shift()
+      hist.tx.push(txRate); hist.tx.shift()
+
+      // RX se grafica como valores NEGATIVOS para que "caiga" hacia abajo (estilo pfSense)
+      const rxMirrored = hist.rx.map(v => -v)
+
+      ifaceChart = new Chart(document.getElementById('ifaceChart'), {
+        type: 'line',
+        data: {
+          labels: Array(30).fill(''),
+          datasets: [
+            { label: '↑ Subida (TX)', data: hist.tx, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.35, borderWidth: 1.5, pointRadius: 0 },
+            { label: '↓ Bajada (RX)', data: rxMirrored, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.15)', fill: true, tension: 0.35, borderWidth: 1.5, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true, animation: false,
+          plugins: { legend: { display: true, labels: { color: '#64748b', font: { size: 11 } } } },
+          scales: {
+            x: { display: false },
+            y: {
+              grid: {
+                color: (ctx) => ctx.tick.value === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.05)'
+              },
+              ticks: {
+                color: '#64748b', font: { size: 10 },
+                callback: v => formatBytes(Math.abs(v)) + '/s'
+              }
+            }
+          }
+        }
+      })
+
+      // Auto-refresh del gráfico cada 2 segundos mientras la modal esté abierta
+      if (window._ifaceModalInterval) clearInterval(window._ifaceModalInterval)
+      window._ifaceModalCurrentIface = name
+      window._ifaceModalInterval = setInterval(() => {
+        const modalEl = document.getElementById('iface-modal')
+        if (!modalEl || !modalEl.classList.contains('show') && !modalEl.classList.contains('open')) {
+          clearInterval(window._ifaceModalInterval)
+          return
+        }
+      }, 2000)
+
+      openModal('iface-modal')
+    }
+
+    // ── VPN modal ────────────────────────────────────────────────────────────
+    function openVPNModal(vpnStr, type) {
+      let vpn
+      try { vpn = JSON.parse(vpnStr) } catch(e) { return }
+      const v = type === 'wg' ? vpn.wireguard : vpn.openvpn
+      document.getElementById('vpn-modal-title').innerHTML = `<i class="bi bi-shield-lock me-2"></i>${type==='wg'?'WireGuard':'OpenVPN'} — Detalles`
+      document.getElementById('vpn-modal-content').innerHTML = v?.running ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--bg-dark);border-radius:8px;padding:12px">
+            <div style="color:var(--text-muted);font-size:0.72rem;margin-bottom:4px">Estado</div>
+            <div style="color:#22c55e;font-weight:600">Running</div>
+          </div>
+          <div style="background:var(--bg-dark);border-radius:8px;padding:12px">
+            <div style="color:var(--text-muted);font-size:0.72rem;margin-bottom:4px">Peers conectados</div>
+            <div style="color:var(--text-primary);font-weight:600">${v.connected||0} / ${v.peers||0}</div>
+          </div>
+          ${v.serverIP?`<div style="background:var(--bg-dark);border-radius:8px;padding:12px;grid-column:1/-1">
+            <div style="color:var(--text-muted);font-size:0.72rem;margin-bottom:4px">IP Servidor</div>
+            <div style="color:var(--text-primary);font-family:monospace">${v.serverIP}</div>
+          </div>`:''}
+        </div>`
+      : `<div style="color:var(--text-muted);padding:20px;text-align:center">VPN detenida</div>`
+      openModal('vpn-modal')
+    }
+
+    // ── Suricata modal ───────────────────────────────────────────────────────
+    async function loadSuricataModal() {
+      const el = document.getElementById('suricata-modal-content')
+      el.innerHTML = '<div style="color:var(--text-muted)">Cargando...</div>'
+      try {
+        const res = await fetch('/api/suricata/alerts?limit=200', { headers: h.headers })
+        const data = await res.json()
+        const alerts = data.alerts || []
+        const byCat = {}, byIP = {}
+        alerts.forEach(a => {
+          if (a.category) byCat[a.category] = (byCat[a.category]||0) + 1
+          if (a.srcIP) byIP[a.srcIP] = (byIP[a.srcIP]||0) + 1
+        })
+        const topCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5)
+        const topIPs = Object.entries(byIP).sort((a,b)=>b[1]-a[1]).slice(0,10)
+        el.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+            <div style="background:var(--bg-dark);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.8rem;font-weight:700;color:#f87171">${alerts.length}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">Total alertas</div>
+            </div>
+            <div style="background:var(--bg-dark);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.8rem;font-weight:700;color:#f59e0b">${Object.keys(byIP).length}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">IPs únicas</div>
+            </div>
+          </div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">Top Categorías</div>
+          ${topCats.map(([cat,cnt])=>`<div class="geo-row"><span style="color:var(--text-primary)">${cat}</span><span class="geo-count">${cnt}</span></div>`).join('')}
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:12px 0 8px">Top IPs Atacantes</div>
+          ${topIPs.map(([ip,cnt])=>`<div class="geo-row"><span style="font-family:monospace;color:#f87171">${ip}</span><span class="geo-count">${cnt} alertas</span></div>`).join('')}`
+      } catch(e) { el.innerHTML = '<div style="color:var(--text-muted)">Error cargando datos</div>' }
+    }
+
+    // ── DNS modal ────────────────────────────────────────────────────────────
+    async function loadDNSModal() {
+      const el = document.getElementById('dns-modal-content')
+      el.innerHTML = '<div style="color:var(--text-muted)">Cargando...</div>'
+      try {
+        const res = await fetch('/api/security/status', { headers: h.headers })
+        const data = await res.json()
+        const domains = data.unbound?.domains || 0
+        el.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div style="background:var(--bg-dark);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#4f8ef7">${domains.toLocaleString()}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">Dominios bloqueados</div>
+            </div>
+            <div style="background:var(--bg-dark);border-radius:8px;padding:12px;text-align:center">
+              <div style="font-size:1.5rem;font-weight:700;color:#22c55e">${data.unbound?.running?'Running':'Stopped'}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">Estado</div>
+            </div>
+          </div>
+          <div style="font-size:0.82rem;color:var(--text-muted)">
+            Bloqueando ads, tracking, malware y phishing para todos los dispositivos de la LAN.
+          </div>`
+      } catch(e) { el.innerHTML = '<div style="color:var(--text-muted)">Error</div>' }
+    }
+
+    // ── Main load ────────────────────────────────────────────────────────────
+    let prevTraffic = {}
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard', { headers: h.headers })
+        const data = await res.json()
+        const m = data.metrics
+
+        // CPU
+        const cpu = parseFloat(m.cpu) || 0
+        document.getElementById('cpu-val').textContent = cpu + '%'
+        document.getElementById('cpu-sub').textContent = cpu > 80 ? '⚠️ Alto' : cpu > 60 ? 'Moderado' : 'Normal'
+        document.getElementById('cpu-bar').style.cssText = `width:${cpu}%;background:${cpu>80?'#ef4444':cpu>60?'#f59e0b':'#4f8ef7'}`
+        cpuData.push(cpu); cpuData.shift(); cpuChart.update()
+
+        // Memory
+        const mem = m.memory
+        if (mem && typeof mem === 'object') {
+          document.getElementById('mem-val').textContent = mem.label
+          document.getElementById('mem-sub').textContent = mem.percent + '% usado'
+          document.getElementById('mem-bar').style.cssText = `width:${mem.percent}%;background:${mem.percent>80?'#ef4444':'#a855f7'}`
+          memData.push(mem.percent); memData.shift()
+        }
+        memChart.update()
+
+        // Disk
+        const disk = m.disk
+        if (disk && typeof disk === 'object') {
+          document.getElementById('disk-val').textContent = disk.label
+          document.getElementById('disk-sub').textContent = disk.percent + '% usado'
+          document.getElementById('disk-bar').style.cssText = `width:${disk.percent}%;background:${disk.percent>80?'#ef4444':'#f59e0b'}`
+        }
+
+        document.getElementById('uptime-val').textContent = m.uptime || '--'
+        document.getElementById('hostname-val').textContent = m.hostname || 'coltanos'
+
+        // Hardware info en modales
+        if (m.hardware) {
+          const hw = m.hardware
+          // CPU modal - modelo y cores
+          const cpuInfo = document.getElementById('hw-cpu-info')
+          if (cpuInfo) cpuInfo.innerHTML = `
+            <div style="background:var(--bg-dark);border-radius:8px;padding:10px">
+              <div style="color:var(--text-muted);font-size:0.72rem">Modelo CPU</div>
+              <div style="color:var(--text-primary);font-weight:600">${hw.cpuModel||'—'}</div>
+            </div>
+            <div style="background:var(--bg-dark);border-radius:8px;padding:10px">
+              <div style="color:var(--text-muted);font-size:0.72rem">Cores</div>
+              <div style="color:var(--text-primary);font-weight:600">${hw.cpuCores||'—'} cores</div>
+            </div>`
+
+          // Memory modal - RAM total y speed
+          const memInfo = document.getElementById('hw-mem-info')
+          if (memInfo) memInfo.innerHTML = `
+            <div style="background:var(--bg-dark);border-radius:8px;padding:10px">
+              <div style="color:var(--text-muted);font-size:0.72rem">RAM Total</div>
+              <div style="color:var(--text-primary);font-weight:600">${hw.memTotal||'—'}</div>
+            </div>
+            <div style="background:var(--bg-dark);border-radius:8px;padding:10px">
+              <div style="color:var(--text-muted);font-size:0.72rem">Velocidad</div>
+              <div style="color:var(--text-primary);font-weight:600">${hw.memSpeed||'—'}</div>
+            </div>`
+
+          // Disk modal - grafico torta
+          const disk = m.disk
+          if (disk && document.getElementById('diskChart')) {
+            if (diskChart) diskChart.destroy()
+            diskChart = new Chart(document.getElementById('diskChart'), {
+              type: 'doughnut',
+              data: {
+                labels: ['Usado', 'Libre'],
+                datasets: [{
+                  data: [disk.percent, 100 - disk.percent],
+                  backgroundColor: [disk.percent > 80 ? '#ef4444' : '#f59e0b', 'rgba(100,116,139,0.2)'],
+                  borderWidth: 0
+                }]
+              },
+              options: {
+                responsive: true, animation: false,
+                plugins: {
+                  legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } }
+                },
+                cutout: '70%'
+              }
+            })
+          }
+          const diskInfo = document.getElementById('hw-disk-info')
+          if (diskInfo && hw.disks) diskInfo.innerHTML = `
+            <div style="text-align:center;margin-bottom:12px">
+              <span style="font-size:1.4rem;font-weight:700;color:var(--text-primary)">${disk.used} / ${disk.total}</span>
+              <span style="color:var(--text-muted);font-size:0.82rem;margin-left:8px">(${disk.percent}% usado)</span>
+            </div>
+            ${hw.disks.map(d => `<div style="background:var(--bg-dark);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between">
+              <span style="color:var(--text-primary)">${d.model||d.name}</span>
+              <span style="color:var(--text-muted)">${d.size||''}</span>
+            </div>`).join('')}`
+        }
+
+        // Interfaces — solo WAN y LAN (excluye VLAN e interfaces OPT sin uso)
+        if (m.traffic && m.traffic.length > 0) {
+          const relevant = m.traffic.filter(i => !i.isVlan && (i.role === 'WAN' || i.role === 'LAN' || (i.role||'').startsWith('OPT')))
+          document.getElementById('ifaces-container').innerHTML = relevant.map(iface => {
+            const prev = prevTraffic[iface.name] || iface
+            const rxRate = Math.max(0, iface.rxBytes - prev.rxBytes)
+            const txRate = Math.max(0, iface.txBytes - prev.txBytes)
+            prevTraffic[iface.name] = iface
+            const roleLabel = iface.role === 'WAN' ? 'WAN' : iface.role === 'LAN' ? 'LAN' : iface.role || ''
+            const dotColor = iface.status === 'active' ? '#22c55e' : '#64748b'
+            return `<div class="iface-row" onclick="openIfaceModal('${iface.name}','${iface.ip||''}','${iface.status}',${rxRate},${txRate})">
+              <div><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};margin-right:6px"></span><span class="iface-name">${iface.name}</span><span class="iface-role">${roleLabel} · ${iface.ip||'sin IP'}</span></div>
+              <div class="iface-speeds"><span class="speed-rx" style="color:#f87171">↓${formatBytes(rxRate)}/s</span><span class="speed-tx" style="color:#3b82f6">↑${formatBytes(txRate)}/s</span></div>
+            </div>`
+          }).join('') || '<div style="color:var(--text-muted);font-size:0.82rem">Sin interfaces WAN/LAN configuradas</div>'
+
+          // Si hay una modal de interfaz abierta, actualizar su grafico en vivo
+          if (window._ifaceModalCurrentIface && ifaceChart) {
+            const openIface = relevant.find(i => i.name === window._ifaceModalCurrentIface)
+            if (openIface) {
+              const prev2 = prevTraffic[openIface.name] || openIface
+              const rxRate2 = Math.max(0, openIface.rxBytes - prev2.rxBytes)
+              const txRate2 = Math.max(0, openIface.txBytes - prev2.txBytes)
+              if (!window._ifaceHistory) window._ifaceHistory = {}
+              if (!window._ifaceHistory[openIface.name]) window._ifaceHistory[openIface.name] = { rx: Array(30).fill(0), tx: Array(30).fill(0) }
+              const hist2 = window._ifaceHistory[openIface.name]
+              hist2.rx.push(rxRate2); hist2.rx.shift()
+              hist2.tx.push(txRate2); hist2.tx.shift()
+              ifaceChart.data.datasets[0].data = hist2.tx
+              ifaceChart.data.datasets[1].data = hist2.rx.map(v => -v)
+              ifaceChart.update('none')
+              // Actualizar tambien los numeros de detalle
+              const detailsEl = document.getElementById('iface-modal-details')
+              if (detailsEl) {
+                detailsEl.innerHTML = `
+                  <div style="display:flex;gap:20px;flex-wrap:wrap">
+                    <div><div style="color:var(--text-muted);font-size:0.72rem">IP</div><div style="font-family:monospace;color:var(--text-primary)">${openIface.ip||'—'}</div></div>
+                    <div><div style="color:var(--text-muted);font-size:0.72rem">Estado</div><div style="color:${openIface.status==='active'?'#22c55e':'#ef4444'}">${openIface.status}</div></div>
+                    <div><div style="color:var(--text-muted);font-size:0.72rem">↓ Bajada</div><div style="color:#f87171;font-family:monospace">${formatBytes(rxRate2)}/s</div></div>
+                    <div><div style="color:var(--text-muted);font-size:0.72rem">↑ Subida</div><div style="color:#3b82f6;font-family:monospace">${formatBytes(txRate2)}/s</div></div>
+                  </div>`
+              }
+            }
+          }
+        }
+
+        // Services — exclude SSH and PM2
+        if (m.services && m.services.length > 0) {
+          const excluded = ['SSH', 'PM2 Backend', 'PM2', 'pm2']
+          const filtered = m.services.filter(s => !excluded.includes(s.name))
+          document.getElementById('services-container').innerHTML = filtered.map(s => {
+            const route = SERVICE_ROUTES[s.name]
+            return `<div class="service-item ${route?'clickable':''}" ${route?`onclick="window.location.href='${route}'"`:''}>
+              <span class="service-name">${s.name}</span>
+              <span class="dot ${s.running?'dot-green':'dot-red'}"></span>
+            </div>`
+          }).join('')
+        }
+
+        // VPN
+        if (m.vpn) {
+          const vpnStr = JSON.stringify(m.vpn).replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+          document.getElementById('vpn-container').innerHTML = `
+            <div class="vpn-item" onclick="openVPNModal('${vpnStr}','wg')">
+              <div>
+                <div style="font-size:0.82rem;font-weight:600;color:var(--text-primary)">WireGuard</div>
+                ${m.vpn.wireguard?.running?`<div style="font-size:0.72rem;color:var(--text-muted)">${m.vpn.wireguard.connected||0}/${m.vpn.wireguard.peers||0} peers</div>`:''}
+              </div>
+              <span class="${m.vpn.wireguard?.running?'badge-on':'badge-off'}">${m.vpn.wireguard?.running?'ON':'OFF'}</span>
+            </div>
+            <div class="vpn-item" onclick="openVPNModal('${vpnStr}','ovpn')">
+              <div><div style="font-size:0.82rem;font-weight:600;color:var(--text-primary)">OpenVPN</div></div>
+              <span class="${m.vpn.openvpn?.running?'badge-on':'badge-off'}">${m.vpn.openvpn?.running?'ON':'OFF'}</span>
+            </div>`
+        }
+
+        // Suricata
+        try {
+          const [sRes, countRes] = await Promise.all([
+            fetch('/api/suricata/status', { headers: h.headers }),
+            fetch('/api/reports/attacks/count', { headers: h.headers }).catch(() => null)
+          ])
+          const sData = await sRes.json()
+          // Usamos el conteo real de la DB (attack_log) si esta disponible (Premium),
+          // consistente con lo que muestra Security > Suricata > Alertas.
+          let alertCount = sData.alerts || 0
+          if (countRes && countRes.ok) {
+            const countData = await countRes.json()
+            if (typeof countData.total === 'number') alertCount = countData.total
+          }
+          document.getElementById('suricata-summary').innerHTML = `
+            <div class="sec-item">
+              <div>
+                <div style="font-size:0.82rem;color:var(--text-primary)">${sData.running?(sData.mode==='ips'?'IPS':'IDS')+' — Running':'Detenido'}</div>
+                <div class="sec-label">en ${sData.interface||'—'}</div>
+              </div>
+              <div class="sec-count">${alertCount} <span style="font-size:0.72rem;color:var(--text-muted)">alertas</span></div>
+            </div>`
+        } catch(e) {}
+
+        // DNS Blocker
+        try {
+          const dRes = await fetch('/api/security/status', { headers: h.headers })
+          const dData = await dRes.json()
+          document.getElementById('dns-summary').innerHTML = `
+            <div class="sec-item">
+              <div>
+                <div style="font-size:0.82rem;color:var(--text-primary)">${dData.unbound?.running?'Running':'Detenido'}</div>
+                <div class="sec-label">Unbound DNS</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:1.1rem;font-weight:700;color:#4f8ef7">${(dData.unbound?.domains||0).toLocaleString()}</div>
+                <div style="font-size:0.7rem;color:var(--text-muted)">dominios</div>
+              </div>
+            </div>`
+        } catch(e) {}
+
+        // Site blocking
+        try {
+          const sitesRes = await fetch('/api/sites/groups', { headers: h.headers })
+          const sitesData = await sitesRes.json()
+          const groups = sitesData.groups || []
+          const totalSites = groups.reduce((acc,g) => acc+(g.entries?.length||0), 0)
+          document.getElementById('sites-summary').innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+              <div style="background:var(--bg-dark);border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:1.4rem;font-weight:700;color:#4f8ef7">${groups.length}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted)">Grupos</div>
+              </div>
+              <div style="background:var(--bg-dark);border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:1.4rem;font-weight:700;color:#f87171">${totalSites}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted)">Sitios bloqueados</div>
+              </div>
+            </div>
+            ${groups.slice(0,4).map(g=>`
+              <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:0.78rem;border-bottom:1px solid var(--border)">
+                <span style="color:var(--text-primary)">${g.name}</span>
+                <span style="color:var(--text-muted)">${g.entries?.length||0} sitios</span>
+              </div>`).join('')}`
+        } catch(e) {
+          document.getElementById('sites-summary').innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem">Sin datos</div>'
+        }
+
+            } catch(e) { console.error('Dashboard error:', e) }
+    }
+
+    // ── Drag & Drop individual panels ────────────────────────────────────────
+    let dragSrcId = null
+
+    function dragStart(e, id) {
+      dragSrcId = id
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', id)
+      setTimeout(() => { const el = document.getElementById(id); if(el) el.classList.add('dragging') }, 0)
+    }
+
+    function dragOver(e) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      const panel = e.currentTarget
+      if (panel.classList.contains('panel') && panel.id !== dragSrcId) {
+        document.querySelectorAll('.panel.drag-over').forEach(el => el.classList.remove('drag-over'))
+        panel.classList.add('drag-over')
+      }
+    }
+
+    function dragEnd(e) {
+      document.querySelectorAll('.panel.dragging, .panel.drag-over').forEach(el => {
+        el.classList.remove('dragging', 'drag-over')
+      })
+    }
+
+    function drop(e) {
+      e.preventDefault()
+      const target = e.currentTarget
+      target.classList.remove('drag-over')
+      if (!dragSrcId || !target.classList.contains('panel') || target.id === dragSrcId) return
+      const grid = document.getElementById('panels-grid')
+      const src = document.getElementById(dragSrcId)
+      if (!src || !target) return
+      // Insert src before target
+      const allPanels = [...grid.querySelectorAll('.panel')]
+      const srcIdx = allPanels.indexOf(src)
+      const tgtIdx = allPanels.indexOf(target)
+      if (srcIdx < tgtIdx) grid.insertBefore(src, target.nextSibling)
+      else grid.insertBefore(src, target)
+      dragSrcId = null
+    }
+
+    function saveLayout() {
+      const grid = document.getElementById('panels-grid')
+      const order = [...grid.querySelectorAll('.panel')].map(p => p.id)
+      localStorage.setItem('dashboard_layout', JSON.stringify(order))
+      const btn = document.querySelector('.btn-save-layout')
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardado!'
+      setTimeout(() => { btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Guardar Layout' }, 2000)
+    }
+
+    function resetLayout() {
+      localStorage.removeItem('dashboard_layout')
+      location.reload()
+    }
+
+    function applyLayout() {
+      const saved = localStorage.getItem('dashboard_layout')
+      if (!saved) return
+      try {
+        const order = JSON.parse(saved)
+        const grid = document.getElementById('panels-grid')
+        order.forEach(id => { const el = document.getElementById(id); if (el) grid.appendChild(el) })
+      } catch(e) {}
+    }
+
+    applyLayout()
+
+    loadDashboard()
+    loadPublicIP()
+    setInterval(loadDashboard, 3000)
+  </script>
+</body>
+</html>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coltan OS — Settings</title>
+  <link href="../vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link href="../vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="../css/main.css" rel="stylesheet">
+  <style>
+    .nav-tabs { border-color: var(--border); }
+    .nav-tabs .nav-link { color: var(--text-muted); border: none; padding: 10px 20px; }
+    .nav-tabs .nav-link.active { color: var(--accent); border-bottom: 2px solid var(--accent); background: none; }
+    .nav-tabs .nav-link:hover { color: var(--text-primary); }
+    .settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .settings-card h6 { color: var(--accent); font-weight: 700; margin-bottom: 16px; font-size: 1rem; }
+    .form-control, .form-select { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); }
+    .form-control:focus, .form-select:focus { background: var(--bg-dark); border-color: var(--accent); color: var(--text-primary); box-shadow: none; }
+    .form-label { color: var(--text-muted); font-size: 0.85rem; }
+    .form-check-input { background-color: var(--bg-dark); border-color: var(--border); }
+    .btn-accent { background: var(--accent); border: none; color: white; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
+    .btn-accent:hover { opacity: 0.85; color: white; }
+    .btn-warning-soft { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
+    .btn-primary-soft { background: rgba(79,142,247,0.15); border: 1px solid rgba(79,142,247,0.3); color: var(--accent); padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
+    .btn-danger-soft { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; }
+    .alert-success-custom { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; border-radius: 8px; padding: 12px 16px; display: none; margin-bottom: 16px; }
+    .alert-error-custom { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; border-radius: 8px; padding: 12px 16px; display: none; margin-bottom: 16px; }
+    .sysinfo-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .sysinfo-row:last-child { border-bottom: none; }
+    .sysinfo-label { color: var(--text-muted); font-size: 0.85rem; }
+    .sysinfo-value { color: var(--text-primary); font-size: 0.85rem; font-family: monospace; }
+    .log-container { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; margin-top: 12px; color: var(--text-primary); display: none; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-row { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
+    .error-row:hover { border-color: rgba(239,68,68,0.3); }
+    .error-source-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 5px; background: rgba(239,68,68,0.12); color: #f87171; letter-spacing: 0.03em; }
+    .error-time { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
+    .error-message { font-size: 0.85rem; color: var(--text-primary); margin-top: 6px; }
+    .error-stack { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 8px; white-space: pre-wrap; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; max-height: 150px; overflow-y: auto; display: none; }
+    .error-toggle-stack { font-size: 0.72rem; color: var(--accent); cursor: pointer; margin-top: 6px; display: inline-block; }
+    .diag-filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .diag-filter-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 14px; border-radius: 7px; font-size: 0.78rem; cursor: pointer; }
+    .diag-filter-btn.active { background: rgba(79,142,247,0.12); border-color: rgba(79,142,247,0.3); color: var(--accent); }
+    .diag-stat { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; flex: 1; }
+    .diag-stat .num { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); }
+    .diag-stat .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+
+  <div class="main-content">
+    <div class="p-4">
+
+      <div id="alert-success" class="alert-success-custom"><i class="bi bi-check-circle me-2"></i><span id="alert-text">Saved.</span></div>
+      <div id="alert-error" class="alert-error-custom"><i class="bi bi-exclamation-triangle me-2"></i><span id="alert-error-text">Error.</span></div>
+
+      <ul class="nav nav-tabs mb-4">
+        <li class="nav-item"><a class="nav-link active" href="#" onclick="showTab('system', this)"><i class="bi bi-pc-display me-2"></i>System</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('security', this)"><i class="bi bi-shield-lock me-2"></i>Security</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('notifications', this)"><i class="bi bi-bell me-2"></i>Notifications</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('about', this)"><i class="bi bi-info-circle me-2"></i>About</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="showTab('diagnostics', this)"><i class="bi bi-bug me-2"></i>Diagnóstico</a></li>
+      </ul>
+
+      <!-- System Tab -->
+      <div id="tab-system">
+        <div class="settings-card">
+          <h6><i class="bi bi-pc-display me-2"></i>System Settings</h6>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Hostname</label>
+              <input type="text" class="form-control" id="sys-hostname">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Timezone</label>
+              <select class="form-select" id="sys-timezone">
+                <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="America/Chicago">America/Chicago</option>
+                <option value="America/Los_Angeles">America/Los_Angeles</option>
+                <option value="Europe/London">Europe/London</option>
+                <option value="Europe/Madrid">Europe/Madrid</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-accent" onclick="saveSystemSettings()">
+            <i class="bi bi-floppy me-2"></i>Save
+          </button>
+        </div>
+
+        <!-- Coltan OS Updates -->
+        <div class="settings-card">
+          <h6><i class="bi bi-cloud-download me-2"></i>Coltan OS Updates</h6>
+          <div id="coltan-version-container">
+            <div class="text-muted" style="font-size:0.85rem">Verificando versión...</div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary-soft" onclick="checkColtanVersion()" id="check-update-btn">
+              <i class="bi bi-search me-1"></i>Verificar actualizaciones
+            </button>
+            <button class="btn btn-accent" onclick="updateColtan()" id="coltan-update-btn" style="display:none">
+              <i class="bi bi-cloud-download me-1"></i>Actualizar Coltan OS
+            </button>
+          </div>
+          <div class="log-container" id="coltan-update-log"></div>
+        </div>
+
+        <!-- System Package Updates -->
+        <div class="settings-card">
+          <h6><i class="bi bi-arrow-up-circle me-2"></i>System Package Updates</h6>
+          <p style="color:var(--text-muted);font-size:0.85rem">Actualizar paquetes del sistema FreeBSD. Corre en background.</p>
+          <div class="d-flex gap-2">
+            <button class="btn btn-warning-soft" onclick="runUpdate()" id="update-btn">
+              <i class="bi bi-arrow-up-circle me-2"></i>Update Packages
+            </button>
+            <button class="btn btn-primary-soft" onclick="checkUpdateLog()">
+              <i class="bi bi-journal-text me-2"></i>View Log
+            </button>
+          </div>
+          <div class="log-container" id="update-log"></div>
+        </div>
+
+        <div class="settings-card">
+          <h6><i class="bi bi-power me-2"></i>Power</h6>
+          <p style="color:var(--text-muted);font-size:0.85rem">Reiniciar o apagar el servidor Coltan OS.</p>
+          <div class="d-flex gap-2">
+            <button class="btn btn-warning-soft" onclick="rebootSystem()">
+              <i class="bi bi-arrow-clockwise me-2"></i>Reiniciar
+            </button>
+            <button class="btn btn-danger-soft" onclick="shutdownSystem()">
+              <i class="bi bi-power me-2"></i>Apagar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Tab -->
+      <div id="tab-security" style="display:none">
+        <div class="settings-card">
+          <h6><i class="bi bi-shield-lock me-2"></i>Change Admin Password</h6>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Current Password</label>
+              <input type="password" class="form-control" id="sec-current" placeholder="••••••••">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-control" id="sec-new" placeholder="••••••••">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Confirm Password</label>
+              <input type="password" class="form-control" id="sec-confirm" placeholder="••••••••">
+            </div>
+          </div>
+          <button class="btn btn-accent" onclick="changePassword()">
+            <i class="bi bi-key me-2"></i>Change Password
+          </button>
+        </div>
+      </div>
+
+      <!-- Notifications Tab -->
+      <div id="tab-notifications" style="display:none">
+        <div class="settings-card">
+          <h6><i class="bi bi-envelope me-2"></i>Email Notifications</h6>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="notif-email-enabled">
+              <label class="form-check-label form-label" for="notif-email-enabled">Enable email notifications</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">SMTP Host</label>
+              <input type="text" class="form-control" id="notif-smtp-host" placeholder="smtp.gmail.com">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">SMTP Port</label>
+              <input type="number" class="form-control" id="notif-smtp-port" value="587">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">SMTP User</label>
+              <input type="text" class="form-control" id="notif-smtp-user" placeholder="user@gmail.com">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">SMTP Password</label>
+              <input type="password" class="form-control" id="notif-smtp-pass" placeholder="••••••••">
+            </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Send alerts to</label>
+              <input type="text" class="form-control" id="notif-email-to" placeholder="admin@empresa.com">
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-accent" onclick="saveNotifications()"><i class="bi bi-floppy me-2"></i>Save</button>
+            <button class="btn btn-primary-soft" onclick="testSMTP()"><i class="bi bi-send me-2"></i>Test Connection</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h6><i class="bi bi-link-45deg me-2"></i>Webhook Notifications</h6>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="notif-webhook-enabled">
+              <label class="form-check-label form-label" for="notif-webhook-enabled">Enable webhook</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Webhook URL</label>
+            <input type="text" class="form-control" id="notif-webhook-url" placeholder="https://hooks.slack.com/...">
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-accent" onclick="saveNotifications()"><i class="bi bi-floppy me-2"></i>Save</button>
+            <button class="btn btn-primary-soft" onclick="testWebhook()"><i class="bi bi-send me-2"></i>Test Webhook</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Tab -->
+      <div id="tab-license" style="display:none">
+        <div class="settings-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h6 style="margin-bottom:0"><i class="bi bi-key me-2"></i>Licencia de Coltan OS</h6>
+            <button class="btn btn-primary-soft" onclick="forceCheckLicense()" id="force-check-btn" style="font-size:0.78rem;padding:5px 14px">
+              <i class="bi bi-arrow-clockwise me-1"></i>Forzar verificación
+            </button>
+          </div>
+          <div id="license-status-box" style="margin-bottom:20px">
+            <div class="text-muted" style="font-size:0.85rem">Cargando estado de licencia...</div>
+          </div>
+          <div id="license-upload-section">
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px">
+              Para activar tu licencia, cargá el archivo <code>.json</code> provisto por Coltan OS.
+            </p>
+            <div class="mb-3">
+              <label class="form-label">Archivo de licencia (.json)</label>
+              <input type="file" class="form-control" id="license-file-input" accept=".json">
+            </div>
+            <button class="btn btn-accent" onclick="applyLicense()">
+              <i class="bi bi-key me-2"></i>Aplicar Licencia
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostics Tab -->
+      <div id="tab-diagnostics" style="display:none">
+        <div class="settings-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h6 style="margin-bottom:0"><i class="bi bi-bug me-2"></i>Reporte de Errores</h6>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="diag-enabled-toggle" onchange="toggleDiagReporting()">
+              <label class="form-check-label" style="font-size:0.82rem;color:var(--text-muted)" for="diag-enabled-toggle">Enviar reportes a Coltan OS</label>
+            </div>
+          </div>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0">
+            Cuando está activado, los errores del sistema se envían automáticamente a Coltan OS para ayudarnos
+            a detectar y corregir bugs. No se envían contraseñas, claves privadas ni datos de tu red local —
+            toda esa información se filtra antes de enviarse.
+          </p>
+        </div>
+
+        <div class="settings-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <h6 style="margin-bottom:0"><i class="bi bi-list-ul me-2"></i>Errores Registrados</h6>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary-soft" onclick="loadDiagErrors()" style="font-size:0.78rem;padding:5px 14px">
+                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+              </button>
+              <button class="btn btn-danger-soft" onclick="clearDiagErrors()" style="font-size:0.78rem;padding:5px 14px">
+                <i class="bi bi-trash me-1"></i>Limpiar historial
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-bottom:16px">
+            <div class="diag-stat"><div class="num" id="diag-stat-total">—</div><div class="lbl">Total</div></div>
+            <div class="diag-stat"><div class="num" id="diag-stat-backend">—</div><div class="lbl">Backend</div></div>
+            <div class="diag-stat"><div class="num" id="diag-stat-install">—</div><div class="lbl">Instalación</div></div>
+            <div class="diag-stat"><div class="num" id="diag-stat-service">—</div><div class="lbl">Servicios</div></div>
+          </div>
+
+          <div class="diag-filter-bar">
+            <button class="diag-filter-btn active" onclick="setDiagFilter('all', this)">Todos</button>
+            <button class="diag-filter-btn" onclick="setDiagFilter('backend', this)">Backend</button>
+            <button class="diag-filter-btn" onclick="setDiagFilter('install', this)">Instalación</button>
+            <button class="diag-filter-btn" onclick="setDiagFilter('service', this)">Servicios</button>
+            <button class="diag-filter-btn" onclick="setDiagFilter('manual', this)">Manuales</button>
+          </div>
+
+          <div id="diag-errors-list">
+            <div class="text-muted" style="font-size:0.85rem;text-align:center;padding:20px">Cargando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About Tab -->
+      <div id="tab-about" style="display:none">
+        <div class="settings-card">
+          <h6><i class="bi bi-info-circle me-2"></i>System Information</h6>
+          <div id="sysinfo-container"><div class="text-muted">Loading...</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    const token = localStorage.getItem('coltan_token')
+    if (!token) window.location.href = '/login.html'
+    loadSidebar('settings')
+    loadTopbar('<i class="bi bi-gear me-2"></i>Settings')
+    startClock()
+
+    const h = { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
+
+    function showTab(tab, el) {
+      ['system','security','notifications','about','license','diagnostics'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none'
+      })
+      document.querySelectorAll('.nav-tabs .nav-link').forEach(e => e.classList.remove('active'))
+      if (el) el.classList.add('active')
+      if (tab === 'about') loadSysInfo()
+      if (tab === 'license') loadLicenseStatus()
+      if (tab === 'notifications') loadNotifications()
+      if (tab === 'diagnostics') loadDiagSettings().then(loadDiagErrors)
+    }
+
+    function showAlert(msg, isError = false) {
+      if (isError) {
+        document.getElementById('alert-error-text').textContent = msg
+        document.getElementById('alert-error').style.display = 'block'
+        setTimeout(() => document.getElementById('alert-error').style.display = 'none', 4000)
+      } else {
+        document.getElementById('alert-text').textContent = msg
+        document.getElementById('alert-success').style.display = 'block'
+        setTimeout(() => document.getElementById('alert-success').style.display = 'none', 3000)
+      }
+    }
+
+    async function loadSysInfo() {
+      const res = await fetch('/api/settings/sysinfo', { headers: h.headers })
+      const data = await res.json()
+      document.getElementById('sys-hostname').value = data.hostname || ''
+      document.getElementById('sysinfo-container').innerHTML = `
+        <div class="sysinfo-row"><span class="sysinfo-label">Coltan OS Version</span><span class="sysinfo-value">v${data.coltanVersion}</span></div>
+        <div class="sysinfo-row"><span class="sysinfo-label">FreeBSD Version</span><span class="sysinfo-value">${data.freebsdVersion}</span></div>
+        <div class="sysinfo-row"><span class="sysinfo-label">Node.js Version</span><span class="sysinfo-value">${data.nodeVersion}</span></div>
+        <div class="sysinfo-row"><span class="sysinfo-label">Hostname</span><span class="sysinfo-value">${data.hostname}</span></div>
+        <div class="sysinfo-row"><span class="sysinfo-label">Timezone</span><span class="sysinfo-value">${data.timezone}</span></div>
+        <div class="sysinfo-row"><span class="sysinfo-label">System Uptime</span><span class="sysinfo-value">${data.uptime}</span></div>
+      `
+    }
+
+    async function rebootSystem() {
+      if (!confirm('¿Reiniciar el servidor? El panel no estará disponible por ~1 minuto.')) return
+      await fetch('/api/settings/reboot', { method: 'POST', ...h, body: '{}' })
+      document.body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#e2e8f0;font-family:sans-serif">
+          <div style="font-size:3rem;margin-bottom:24px">🔄</div>
+          <div style="font-size:1.5rem;font-weight:700;margin-bottom:12px">Reiniciando servidor...</div>
+          <div style="color:#64748b;margin-bottom:32px">El panel volverá en aproximadamente 1 minuto.</div>
+          <div style="width:40px;height:40px;border:3px solid #1e293b;border-top:3px solid #4f8ef7;border-radius:50%;animation:spin 1s linear infinite"></div>
+          <div style="margin-top:32px;color:#64748b;font-size:0.85rem" id="countdown">Reintentando en 15 segundos...</div>
+          <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        </div>`
+      let attempts = 0
+      setTimeout(function checkOnline() {
+        attempts++
+        const el = document.getElementById('countdown')
+        if (el) el.textContent = 'Intento ' + attempts + ' de reconexión...'
+        fetch('/api/settings/sysinfo', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => { if (r.ok) window.location.href = '/login.html' })
+          .catch(() => setTimeout(checkOnline, 3000))
+      }, 15000)
+    }
+
+    async function shutdownSystem() {
+      if (!confirm('¿Apagar el servidor? Necesitará acceso físico para encenderlo nuevamente.')) return
+      await fetch('/api/settings/shutdown', { method: 'POST', ...h, body: '{}' })
+      document.body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#e2e8f0;font-family:sans-serif">
+          <div style="font-size:3rem;margin-bottom:24px">⏻</div>
+          <div style="font-size:1.5rem;font-weight:700;margin-bottom:12px">Apagando servidor...</div>
+          <div style="color:#64748b">El servidor se está apagando. Necesitará acceso físico para encenderlo.</div>
+        </div>`
+    }
+
+    async function saveSystemSettings() {
+      const hostname = document.getElementById('sys-hostname').value.trim()
+      const timezone = document.getElementById('sys-timezone').value
+      const [hRes, tRes] = await Promise.all([
+        fetch('/api/settings/hostname', { method: 'POST', ...h, body: JSON.stringify({ hostname }) }),
+        fetch('/api/settings/timezone', { method: 'POST', ...h, body: JSON.stringify({ timezone }) })
+      ])
+      if (hRes.ok && tRes.ok) showAlert('System settings saved')
+      else showAlert('Error saving settings', true)
+    }
+
+    async function changePassword() {
+      const current = document.getElementById('sec-current').value
+      const newPass = document.getElementById('sec-new').value
+      const confirm = document.getElementById('sec-confirm').value
+      if (!current || !newPass || !confirm) return showAlert('All fields required', true)
+      if (newPass !== confirm) return showAlert('Passwords do not match', true)
+      if (newPass.length < 6) return showAlert('Password must be at least 6 characters', true)
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST', ...h,
+        body: JSON.stringify({ currentPassword: current, newPassword: newPass })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showAlert('Password changed successfully')
+        document.getElementById('sec-current').value = ''
+        document.getElementById('sec-new').value = ''
+        document.getElementById('sec-confirm').value = ''
+      } else {
+        showAlert(data.error || 'Error changing password', true)
+      }
+    }
+
+    async function loadNotifications() {
+      const res = await fetch('/api/settings', { headers: h.headers })
+      const data = await res.json()
+      const n = data.notifications || {}
+      const w = data.webhook || {}
+      document.getElementById('notif-email-enabled').checked = n.emailEnabled || false
+      document.getElementById('notif-smtp-host').value = n.smtpHost || ''
+      document.getElementById('notif-smtp-port').value = n.smtpPort || 587
+      document.getElementById('notif-smtp-user').value = n.smtpUser || ''
+      document.getElementById('notif-smtp-pass').value = n.smtpPass || ''
+      document.getElementById('notif-email-to').value = n.emailTo || ''
+      document.getElementById('notif-webhook-enabled').checked = w.enabled || false
+      document.getElementById('notif-webhook-url').value = w.url || ''
+    }
+
+    async function saveNotifications() {
+      const settings = {
+        notifications: {
+          emailEnabled: document.getElementById('notif-email-enabled').checked,
+          smtpHost: document.getElementById('notif-smtp-host').value,
+          smtpPort: parseInt(document.getElementById('notif-smtp-port').value),
+          smtpUser: document.getElementById('notif-smtp-user').value,
+          smtpPass: document.getElementById('notif-smtp-pass').value,
+          emailTo: document.getElementById('notif-email-to').value
+        },
+        webhook: {
+          enabled: document.getElementById('notif-webhook-enabled').checked,
+          url: document.getElementById('notif-webhook-url').value
+        }
+      }
+      const res = await fetch('/api/settings', { method: 'POST', ...h, body: JSON.stringify(settings) })
+      if (res.ok) showAlert('Notification settings saved')
+      else showAlert('Error saving settings', true)
+    }
+
+    async function testSMTP() {
+      const host = document.getElementById('notif-smtp-host').value
+      const port = document.getElementById('notif-smtp-port').value
+      const user = document.getElementById('notif-smtp-user').value
+      const pass = document.getElementById('notif-smtp-pass').value
+      const to = document.getElementById('notif-email-to').value
+      if (!host || !user || !pass || !to) return showAlert('Fill all SMTP fields first', true)
+      const res = await fetch('/api/settings/test-smtp', {
+        method: 'POST', ...h,
+        body: JSON.stringify({ host, port: parseInt(port), user, pass, to })
+      })
+      const data = await res.json()
+      if (data.success) showAlert('Test email sent successfully!')
+      else showAlert('SMTP test failed: ' + data.error, true)
+    }
+
+    async function testWebhook() {
+      const url = document.getElementById('notif-webhook-url').value
+      if (!url) return showAlert('Enter webhook URL first', true)
+      const res = await fetch('/api/settings/test-webhook', {
+        method: 'POST', ...h,
+        body: JSON.stringify({ url })
+      })
+      const data = await res.json()
+      if (data.success) showAlert('Webhook test sent successfully!')
+      else showAlert('Webhook test failed: ' + data.error, true)
+    }
+
+    async function runUpdate() {
+      const btn = document.getElementById('update-btn')
+      btn.disabled = true
+      btn.innerHTML = '<div class="spinner me-2"></div>Starting...'
+      const res = await fetch('/api/settings/update', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: '{}'
+      })
+      const data = await res.json()
+      btn.disabled = false
+      btn.innerHTML = '<i class="bi bi-arrow-up-circle me-2"></i>Update Packages'
+      if (data.success) {
+        showAlert(data.message)
+        setTimeout(checkUpdateLog, 2000)
+      } else {
+        showAlert(data.error || 'Update failed', true)
+      }
+    }
+
+    async function checkUpdateLog() {
+      const res = await fetch('/api/settings/update/log', { headers: h.headers })
+      const data = await res.json()
+      const el = document.getElementById('update-log')
+      el.style.display = 'block'
+      el.textContent = data.log || 'No log yet'
+      el.scrollTop = el.scrollHeight
+    }
+
+    loadSysInfo()
+    checkColtanVersion()
+
+    async function loadLicenseStatus() {
+      const box = document.getElementById('license-status-box')
+      try {
+        const res = await fetch('/api/settings/license/status', { headers: h.headers })
+        const data = await res.json()
+        if (data.active) {
+          box.innerHTML = `
+            <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:16px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5);display:inline-block"></span>
+                <span style="color:#22c55e;font-weight:700;font-size:0.9rem">Licencia Activa</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem">
+                <div><span style="color:var(--text-muted)">Estado:</span> <span style="color:var(--text-primary)">${data.licenseStatus}</span></div>
+                <div><span style="color:var(--text-muted)">Último check:</span> <span style="color:var(--text-primary);font-family:monospace">${data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '—'}</span></div>
+              </div>
+            </div>`
+        } else {
+          box.innerHTML = `
+            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:16px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
+                <span style="color:#f59e0b;font-weight:700;font-size:0.9rem">Sin licencia activa</span>
+              </div>
+              <div style="color:var(--text-muted);font-size:0.82rem;margin-top:8px">${data.error || data.licenseStatus || 'Cargá un archivo de licencia para activar.'}</div>
+            </div>`
+        }
+      } catch(e) {
+        box.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Error verificando licencia</div>'
+      }
+    }
+
+    async function forceCheckLicense() {
+      const btn = document.getElementById('force-check-btn')
+      btn.disabled = true
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verificando...'
+      try {
+        const res = await fetch('/api/settings/license/force-check', { method: 'POST', ...h, body: '{}' })
+        const data = await res.json()
+        if (data.success) {
+          showAlert(data.active ? 'Licencia activa confirmada' : 'Sin licencia activa — los modulos premium se actualizaron automaticamente si correspondia')
+          await loadLicenseStatus()
+        } else {
+          showAlert(data.error || 'Error verificando licencia', true)
+        }
+      } catch(e) {
+        showAlert('Error de conexion al verificar', true)
+      } finally {
+        btn.disabled = false
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Forzar verificación'
+      }
+    }
+
+    async function applyLicense() {
+      const fileInput = document.getElementById('license-file-input')
+      if (!fileInput.files[0]) return showAlert('Seleccioná un archivo de licencia', true)
+      const text = await fileInput.files[0].text()
+      try {
+        JSON.parse(text) // Validar que es JSON válido
+      } catch(e) {
+        return showAlert('El archivo no es un JSON válido', true)
+      }
+      const res = await fetch('/api/settings/license/apply', {
+        method: 'POST', ...h,
+        body: JSON.stringify({ licenseFile: text })
+      })
+      const data = await res.json()
+      if (data.success) {
+        showAlert('Licencia aplicada correctamente')
+        loadLicenseStatus()
+      } else {
+        showAlert(data.error || 'Error aplicando licencia', true)
+      }
+    }
+
+    async function checkColtanVersion() {
+      const btn = document.getElementById('check-update-btn')
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verificando...'
+      btn.disabled = true
+      try {
+        const res = await fetch('/api/settings/coltan/version', { headers: h.headers })
+        const data = await res.json()
+        const container = document.getElementById('coltan-version-container')
+        const updateBtn = document.getElementById('coltan-update-btn')
+
+        if (data.error) {
+          container.innerHTML = `<div style="color:#f87171;font-size:0.85rem"><i class="bi bi-exclamation-triangle me-1"></i>${data.error}</div>`
+        } else if (data.upToDate) {
+          container.innerHTML = `
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Versión actual</div><div style="font-family:monospace;color:#22c55e">${data.localHash}</div></div>
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Branch</div><div style="font-family:monospace;color:var(--accent)">${data.branch}</div></div>
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Último commit</div><div style="font-size:0.82rem;color:var(--text-primary)">${data.lastCommit} <span style="color:var(--text-muted)">(${data.lastCommitDate})</span></div></div>
+            </div>
+            <div style="margin-top:10px;padding:8px 12px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:8px;font-size:0.82rem;color:#22c55e">
+              <i class="bi bi-check-circle me-1"></i>Coltan OS está actualizado
+            </div>`
+          updateBtn.style.display = 'none'
+        } else {
+          container.innerHTML = `
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Versión actual</div><div style="font-family:monospace;color:#f59e0b">${data.localHash}</div></div>
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Versión disponible</div><div style="font-family:monospace;color:#22c55e">${data.remoteHash}</div></div>
+              <div><div style="font-size:0.75rem;color:var(--text-muted)">Branch</div><div style="font-family:monospace;color:var(--accent)">${data.branch}</div></div>
+            </div>
+            <div style="margin-top:10px;padding:8px 12px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:0.82rem;color:#f59e0b">
+              <i class="bi bi-cloud-download me-1"></i>Hay una actualización disponible — hacé clic en "Actualizar Coltan OS"
+            </div>`
+          updateBtn.style.display = 'inline-flex'
+        }
+      } catch(e) {
+        document.getElementById('coltan-version-container').innerHTML = `<div style="color:#f87171;font-size:0.85rem">Error verificando versión</div>`
+      }
+      btn.innerHTML = '<i class="bi bi-search me-1"></i>Verificar actualizaciones'
+      btn.disabled = false
+    }
+
+    async function updateColtan() {
+      if (!confirm('¿Actualizar Coltan OS? El backend se reiniciará automáticamente. El panel no estará disponible por ~30 segundos.')) return
+      const btn = document.getElementById('coltan-update-btn')
+      const log = document.getElementById('coltan-update-log')
+      btn.disabled = true
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualizando...'
+      log.style.display = 'block'
+      log.textContent = 'Descargando actualización...'
+      try {
+        const res = await fetch('/api/settings/coltan/update', { method: 'POST', ...h, body: '{}' })
+        const data = await res.json()
+        if (data.success) {
+          log.textContent = data.output + '\n\nReiniciando backend...'
+          showAlert('Coltan OS actualizado — reconectando...')
+          setTimeout(() => {
+            let attempts = 0
+            function tryReconnect() {
+              attempts++
+              log.textContent += '\nIntento ' + attempts + ' de reconexión...'
+              fetch('/api/health').then(r => {
+                if (r.ok) {
+                  log.textContent += '\n✓ Backend online'
+                  checkColtanVersion()
+                  btn.disabled = false
+                  btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Actualizar Coltan OS'
+                }
+              }).catch(() => setTimeout(tryReconnect, 3000))
+            }
+            setTimeout(tryReconnect, 5000)
+          }, 2000)
+        } else {
+          log.textContent = 'Error: ' + (data.error || 'desconocido')
+          btn.disabled = false
+          btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Actualizar Coltan OS'
+        }
+      } catch(e) {
+        log.textContent = 'Error de conexión'
+        btn.disabled = false
+        btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Actualizar Coltan OS'
+      }
+    }
+
+    // ── Diagnostico / Reporte de errores ──────────────────────────────────────
+    let diagCurrentFilter = 'all'
+    let diagAllErrors = []
+
+    async function loadDiagSettings() {
+      try {
+        const res = await fetch('/api/diagnostics/settings', { headers: h.headers })
+        const data = await res.json()
+        document.getElementById('diag-enabled-toggle').checked = !!data.enabled
+      } catch(e) {}
+    }
+
+    async function toggleDiagReporting() {
+      const enabled = document.getElementById('diag-enabled-toggle').checked
+      try {
+        await fetch('/api/diagnostics/settings', {
+          method: 'POST', headers: h.headers,
+          body: JSON.stringify({ enabled })
+        })
+        showAlert(enabled ? 'Reporte de errores activado' : 'Reporte de errores desactivado')
+      } catch(e) {
+        showAlert('Error guardando configuración', true)
+      }
+    }
+
+    function diagSourceLabel(source) {
+      if (source.startsWith('backend')) return 'Backend'
+      if (source.startsWith('install')) return 'Instalación'
+      if (source.startsWith('service')) return source.split(':')[1] || 'Servicio'
+      if (source.startsWith('manual')) return 'Manual'
+      return source
+    }
+
+    function setDiagFilter(filter, el) {
+      diagCurrentFilter = filter
+      document.querySelectorAll('.diag-filter-btn').forEach(b => b.classList.remove('active'))
+      el.classList.add('active')
+      renderDiagErrors()
+    }
+
+    async function loadDiagErrors() {
+      try {
+        const res = await fetch('/api/diagnostics/errors', { headers: h.headers })
+        const data = await res.json()
+        diagAllErrors = data.errors || []
+
+        document.getElementById('diag-stat-total').textContent = diagAllErrors.length
+        document.getElementById('diag-stat-backend').textContent = diagAllErrors.filter(e => e.source.startsWith('backend')).length
+        document.getElementById('diag-stat-install').textContent = diagAllErrors.filter(e => e.source.startsWith('install')).length
+        document.getElementById('diag-stat-service').textContent = diagAllErrors.filter(e => e.source.startsWith('service')).length
+
+        renderDiagErrors()
+      } catch(e) {
+        document.getElementById('diag-errors-list').innerHTML = '<div class="text-muted" style="font-size:0.85rem;text-align:center;padding:20px">Error cargando reportes</div>'
+      }
+    }
+
+    function renderDiagErrors() {
+      let filtered = diagAllErrors
+      if (diagCurrentFilter !== 'all') {
+        filtered = diagAllErrors.filter(e => e.source.startsWith(diagCurrentFilter))
+      }
+
+      if (filtered.length === 0) {
+        document.getElementById('diag-errors-list').innerHTML = '<div class="text-muted" style="font-size:0.85rem;text-align:center;padding:20px">Sin errores registrados 🎉</div>'
+        return
+      }
+
+      document.getElementById('diag-errors-list').innerHTML = filtered.slice(0, 100).map(err => `
+        <div class="error-row">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="error-source-badge">${diagSourceLabel(err.source)}</span>
+            <span class="error-time">${new Date(err.timestamp).toLocaleString('es-AR')}</span>
+          </div>
+          <div class="error-message">${err.message || '(sin mensaje)'}</div>
+          ${err.stack ? `
+            <span class="error-toggle-stack" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'">
+              Ver detalles técnicos ▾
+            </span>
+            <div class="error-stack">${err.stack}${err.context && err.context !== '{}' ? '\n\nContexto: ' + err.context : ''}</div>
+          ` : ''}
+        </div>
+      `).join('')
+    }
+
+    async function clearDiagErrors() {
+      if (!confirm('¿Borrar todo el historial de errores registrados en este equipo?')) return
+      try {
+        await fetch('/api/diagnostics/errors', { method: 'DELETE', headers: h.headers })
+        showAlert('Historial de errores borrado')
+        loadDiagErrors()
+      } catch(e) {
+        showAlert('Error borrando historial', true)
+      }
+    }
+  </script>
+</body>
+</html>
