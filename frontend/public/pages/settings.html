@@ -158,6 +158,42 @@
             <i class="bi bi-key me-2"></i>Change Password
           </button>
         </div>
+
+        <div class="settings-card">
+          <h6><i class="bi bi-terminal me-2"></i>Acceso SSH como root</h6>
+          <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">
+            Por seguridad, el login remoto de root por SSH viene deshabilitado. Si lo habilitás, tené en cuenta que la clave de fábrica del sistema es <code>Coltan</code>: cambiala antes desde la consola con <code>passwd</code>.
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="ssh-root-toggle" onchange="toggleSshRoot(this)">
+            <label class="form-check-label" for="ssh-root-toggle">Permitir login de root por SSH</label>
+          </div>
+          <div id="ssh-root-state" style="font-size:0.8rem;margin-top:8px;color:var(--text-muted)"></div>
+        </div>
+        <script>
+          async function loadSshStatus() {
+            try {
+              const res = await fetch('/api/settings/ssh', { headers: h.headers })
+              const d = await res.json()
+              const t = document.getElementById('ssh-root-toggle')
+              if (t) t.checked = !!d.rootLogin
+              const s = document.getElementById('ssh-root-state')
+              if (s) s.textContent = 'Servicio SSH: ' + (d.running ? 'activo' : 'detenido') + ' · PermitRootLogin = ' + d.raw
+            } catch (e) {}
+          }
+          async function toggleSshRoot(el) {
+            const want = el.checked
+            if (want && !confirm('Vas a permitir el login de root por SSH. La clave de fábrica del sistema es "Coltan". ¿Continuar?')) { el.checked = false; return }
+            try {
+              const res = await fetch('/api/settings/ssh', { method: 'POST', ...h, body: JSON.stringify({ rootLogin: want }) })
+              const d = await res.json()
+              if (!res.ok) { el.checked = !want; return showAlert(d.error || 'No se pudo cambiar', true) }
+              showAlert(want ? 'Login de root por SSH habilitado' : 'Login de root por SSH deshabilitado')
+              loadSshStatus()
+            } catch (e) { el.checked = !want; showAlert('Error de conexión', true) }
+          }
+          document.addEventListener('DOMContentLoaded', loadSshStatus)
+        </script>
       </div>
 
       <!-- Notifications Tab -->

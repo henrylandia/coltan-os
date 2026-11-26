@@ -20,7 +20,7 @@ async function authRoutes(fastify, options) {
       username: user.username,
       role: user.role
     })
-    return reply.send({ token, user: { id: user.id, username: user.username, role: user.role } })
+    return reply.send({ token, mustChangePassword: !!user.mustChange, user: { id: user.id, username: user.username, role: user.role } })
   })
 
   // GET /api/auth/me

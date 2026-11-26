@@ -24,7 +24,7 @@ async function initDefaultAdmin() {
     return
   }
   const hash = await bcrypt.hash(config.DEFAULT_ADMIN_PASS, 10)
-  users.push({ id: 1, username: config.DEFAULT_ADMIN_USER, password: hash, role: 'admin' })
+  users.push({ id: 1, username: config.DEFAULT_ADMIN_USER, password: hash, role: 'admin', mustChange: true })
   await saveUsers(users)
   console.log(`Default admin created: ${config.DEFAULT_ADMIN_USER}`)
 }
@@ -42,7 +42,7 @@ async function changePassword(username, newPassword) {
   const users = await loadUsers()
   const user = users.find(u => u.username === username)
   if (!user) return false
-  user.password = await bcrypt.hash(newPassword, 10)
+  user.password = await bcrypt.hash(newPassword, 10); delete user.mustChange
   await saveUsers(users)
   return true
 }

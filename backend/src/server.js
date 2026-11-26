@@ -85,6 +85,7 @@ fastify.register(require('./routes/vlans.routes'))
 fastify.register(require('./routes/multiwan.routes'))
 fastify.register(require('./routes/error-reporting.routes'))
 fastify.register(require('./routes/config-backup.routes'))
+fastify.register(require('./routes/ssh-access.routes'))
 
 // ── Rutas exclusivas PREMIUM — se registran solo si el archivo existe ──────
 // (llegan al disco unicamente via upgrade.service.js con licencia activa)
